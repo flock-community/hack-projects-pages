@@ -1,0 +1,36 @@
+name: List READMEs
+
+on:
+  workflow_dispatch:
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  list-readmes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Get organization repositories
+        run: |
+          ORG_NAME="flock-community"
+          REPO_NAME="$(basename "$(pwd)")"
+          echo "Current repo: $REPO_NAME"
+          echo "Trying 'gh repo list $ORG_NAME --json name -q ".name != '$REPO_NAME'" --limit 1000'"
+#          REPOS=$(gh repo list $ORG_NAME --json name -q ".name != '$REPO_NAME'" --limit 1000)
+          REPOS=$(gh api orgs/your-org/repos --paginate | jq -r '.[].name')
+
+          echo "$REPOS" > repos.txt
+
+      - name: List first line of README for each repository
+        run: |
+          while IFS= read -r repo; do
+            REPO_NAME=$(echo $repo | jq -r .name)
+            echo "Repository: $REPO_NAME
+            README_FIRST_LINE=$(gh repo view $ORG_NAME/$REPO_NAME --json files -q '.files."README.md".content' | base64 -d | head -n 3)
+            echo "Repository: $REPO_NAME - First Line of README: $README_FIRST_LINE"
+            echo "---"
+          done < repos.txt
